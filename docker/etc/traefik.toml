@@ -1,0 +1,68 @@
+# Traefik Global configuration
+debug = false
+checkNewVersion = false
+# Logs levels #DEBUG, INFO, WARN, ERROR, FATAL, PANIC
+logLevel = "ERROR"
+#Define the EntryPoint for HTTP and HTTPS
+defaultEntryPoints = ["http"]
+
+
+# API definition
+# Warning: Enabling API will expose Traefik's configuration.
+# It is not recommended in production,
+# unless secured by authentication and authorizations
+[api]
+  address = ":8080"
+  # Name of the related entry point
+  entryPoint = "traefik"
+  # Enable Dashboard
+  dashboard = true
+  # Enable debug mode.
+  # This will install HTTP handlers to expose Go expvars under /debug/vars and
+  # pprof profiling data under /debug/pprof/.
+  # Additionally, the log level will be set to DEBUG.
+  debug = false
+
+# Enable Docker Provider.
+[docker]
+  # Docker server endpoint. Can be a tcp or a unix socket endpoint.
+  endpoint = "unix:///var/run/docker.sock"
+  # Expose containers by default in Traefik.
+  # If set to false, containers that don't have `traefik.enable=true` will be ignored.
+  exposedByDefault = false
+  # Use the IP address from the binded port instead of the inner network one.
+  # In case no IP address is attached to the binded port (or in case 
+  # there is no bind), the inner network one will be used as a fallback.     
+  usebindportip = true
+  # Use Swarm Mode services as data provider.
+  swarmMode = false
+  # Define a default docker network to use for connections to all containers.
+  # Can be overridden by the traefik.docker.network label.
+  network = "web"
+  # Default base domain used for the frontend rules.
+  # Can be overridden by setting the "traefik.domain" label on a container.
+  domain = "docker.localhost"
+  # Enable watch docker changes.
+  watch = true
+  # Override default configuration template.
+  # For advanced users :)
+  # filename = "docker.tmpl"
+  # Override template version
+  # For advanced users :)
+  #
+  # Optional
+  # - "1": previous template version (must be used only with older custom templates, see "filename")
+  # - "2": current template version (must be used to force template version when "filename" is used)
+  #
+  # templateVersion = 2
+
+
+# Define the HTTP port 80 and HTTPS port 443 EntryPoint
+# Enable automatically redirect HTTP to HTTPS
+[entryPoints]
+  [entryPoints.http]
+  address = ":80"
+
+#Enable retry sending a request if the network error
+[retry]
+
