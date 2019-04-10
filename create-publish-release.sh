@@ -157,7 +157,7 @@ $CHANGELOG
 
 ## Using it
 
-Given the docker image with name `traefik`:
+Given the docker image with name 'traefik':
 
     docker run --name router -p 80:80 -v /var/run/docker.sock:/var/run/docker.sock -ti jriguera/traefik
 
