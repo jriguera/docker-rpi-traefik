@@ -4,9 +4,9 @@
 # docker run --name router -v $(pwd)/datadir:/etc/traefik  traefik
 
 ARG ARCH=arm32v6
-FROM "${ARCH}/alpine:3.8"
+FROM "${ARCH}/alpine:3.9"
 
-ARG VERSION=1.7.4
+ARG VERSION=1.7.10
 ARG MYVERSION=jose1
 ARG CONFIGDIR=/etc/traefik
 ARG UID=1000
