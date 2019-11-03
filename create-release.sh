@@ -7,14 +7,14 @@ set -e
 
 NAME="traefik"
 DOCKER_TAG="jriguera/$NAME"
-RELEASE="rpi-traefik"
+RELEASE="traefik"
 DESCRIPTION="Docker image to run Traefik in a Raspberry Pi"
 GITHUB_REPO="jriguera/docker-rpi-traefik"
 
 ###
 
-DOCKER=docker
-JQ=jq
+DOCKER="docker"
+JQ="jq"
 CURL="curl -s"
 RE_VERSION_NUMBER='^[0-9]+([0-9\.]*[0-9]+)*$'
 
@@ -85,7 +85,7 @@ then
     exit 1
 fi
 
-DOCKER_USER=$(docker info 2> /dev/null  | sed -ne 's/^Username: \(.*\)/\1/p')
+DOCKER_USER=$(docker info 2> /dev/null  | sed -ne 's/Username: \(.*\)/\1/p')
 if [ -z "$DOCKER_USER" ]
 then
     echo "ERROR: Not logged in Docker Hub!"
@@ -155,20 +155,40 @@ $CHANGELOG
 
 ## Using it
 
+    DOMAIN="${DOMAIN:-localhost}"
+    DOMAIN_ROUTE_DOCKERS="${DOMAIN_ROUTE_DOCKERS:-false}"
+    ADMIN_HOST="${ADMIN_HOST:-admin.$DOMAIN}"
+    ADMIN_AUTH_USER="${ADMIN_AUTH_USER:-admin}"
+    ADMIN_AUTH_PASSWORD="${ADMIN_AUTH_PASSWORD:-}"
+    ADMIN_CONFIGFILE="${ADMIN_CONFIGFILE:-$CONFIGDIR_DYNAMIC/api.yml}"
+    ADMIN_PROMETHEUS="${ADMIN_PROMETHEUS:-1}"
+    ADMIN_PORT="${ADMIN_PORT:-$PORT_API}"
+    ACME_JSON="${ACME_JSON:-$CONFIGDIR_DYNAMIC/acme/letsencrypt.json}"
+    ACME_EMAIL="${ACME_EMAIL:-}"
+    PORT_HTTP="${PORT_HTTP:-80}"
+    PORT_HTTPS="${PORT_HTTPS:-443}"
+
 Given the docker image with name `traefik`:
 
-    docker run --name router -p 80:80 -v /var/run/docker.sock:/var/run/docker.sock -ti jriguera/traefik
+    docker run -ti -p 8080:80 -p 8081:8080 -v $(pwd)/config:/config -e DOMAIN=localhost -e DOMAIN_ROUTE_DOCKERS=true -v /var/run/docker.sock:/var/run/docker.sock  jriguera/traefik
 
 EOF
 )
-printf -v DATA '{"tag_name": "v%s","target_commitish": "master","name": "v%s","body": %s,"draft": false, "prerelease": false}' "$VERSION" "$VERSION" "$(echo "$DESC" | $JQ -R -s '@text')"
-$CURL -H "Authorization: token $GITHUB_TOKEN" -H "Content-Type: application/json" -XPOST --data "$DATA" "https://api.github.com/repos/$GITHUB_REPO/releases" > /dev/null
-
-git fetch --tags
+printf -v data '{"tag_name": "v%s","target_commitish": "master","name": "v%s","body": %s,"draft": false, "prerelease": false}' "$VERSION" "$VERSION" "$(echo "$DESC" | $JQ -R -s '@text')"
+releaseid=$($CURL -H "Authorization: token $GITHUB_TOKEN" -H "Content-Type: application/json" -XPOST --data "$data" "https://api.github.com/repos/$GITHUB_REPO/releases" | $JQ '.id')
+# Upload the release
+echo "* Uploading image to Github releases section ... "
+echo -n "  URL: "
+$CURL -H "Authorization: token $GITHUB_TOKEN" -H "Content-Type: application/octet-stream" --data-binary @"/tmp/$NAME-$VERSION.tgz" "https://uploads.github.com/repos/$GITHUB_REPO/releases/$releaseid/assets?name=$NAME-$VERSION.tgz" | $JQ -r '.browser_download_url'
 
 echo
 echo "*** Description https://github.com/$GITHUB_REPO/releases/tag/v$VERSION: "
 echo
 echo "$DESC"
 
+# Delete the release
+rm -f "/tmp/$NAME-$VERSION.tgz"
+git fetch --tags
+
 exit 0
+
