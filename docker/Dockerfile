@@ -76,7 +76,6 @@ RUN set -ex                                                                 && \
     [ "${ARCH}" == "amd64" ] && wget --quiet -O /tmp/traefik.tgz "https://github.com/containous/traefik/releases/download/v$VERSION/traefik_v${VERSION}_linux_amd64.tar.gz"; \
     tar -C /usr/bin -xvf /tmp/traefik.tgz traefik                           && \
     chmod +x /usr/bin/traefik                                               && \
-    setcap 'cap_net_bind_service=+ep' /usr/bin/traefik                      && \
     rm -f /tmp/traefik.tgz
 
 WORKDIR "${CONFIGDIR}"

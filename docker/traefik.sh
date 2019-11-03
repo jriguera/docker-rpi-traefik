@@ -60,36 +60,12 @@ random_string() {
 
 ###
 
-
 [ -r "${CONFIGDIR_STATIC}/traefik.yml" ] && CONFIGFILE="${CONFIGDIR_STATIC}/traefik.yml"
 [ -r "${CONFIGDIR_STATIC}/traefik.yaml" ] && CONFIGFILE="${CONFIGDIR_STATIC}/traefik.yaml"
 [ -r "${CONFIGDIR_STATIC}/traefik.toml" ] && CONFIGFILE="${CONFIGDIR_STATIC}/traefik.toml"
-
+[ -r "${CONFIGFILE}" ] || touch "${CONFIGFILE}"
 mkdir -p "${CONFIGDIR_STATIC}"
 mkdir -p "${CONFIGDIR_DYNAMIC}"
-touch "${CONFIGFILE}"
-
-# if command starts with an option, prepend traefik
-if [ "${1:0:1}" == '-' ]
-then
-	set -- traefik --configFile="${CONFIGFILE}" "$@"
-fi
-
-# if our command is a valid Traefik subcommand, let's invoke it through Traefik instead
-# (this allows for "docker run traefik version", etc)
-if traefik "$1" --help >/dev/null 2>&1
-then
-	set -- traefik  --configFile="${CONFIGFILE}" "$@"
-else
-	echo "* '$1' is not a Traefik command: assuming shell execution." 1>&2
-fi
-
-# allow the container to be started with `--user`
-if [ "${1}" == "traefik" ] && [ "$(id -u)" == "0" ]
-then
-	chown -R traefik:traefik "${CONFIGDIR_DYNAMIC}" "${CONFIGDIR_STATIC}" "${CONFIGFILE}"
-	exec su-exec traefik "${BASH_SOURCE}" "$@"
-fi
 
 # if configfile is empty, generate one based on the environment variables
 if [ ! -s "${CONFIGFILE}" ]
@@ -197,5 +173,28 @@ then
 	fi
 fi
 
-exec "$@"
+# if command starts with an option, prepend traefik
+if [ "${1:0:1}" == '-' ]
+then
+	set -- traefik --configFile="${CONFIGFILE}" "$@"
+fi
+
+# if our command is a valid Traefik subcommand, let's invoke it through Traefik instead
+# (this allows for "docker run traefik version", etc)
+if traefik "$1" --help >/dev/null 2>&1
+then
+	set -- traefik  --configFile="${CONFIGFILE}" "$@"
+else
+	echo "* '$1' is not a Traefik command: assuming shell execution." 1>&2
+fi
+
+# allow the container to be started with `--user`
+if [ "${1}" == "traefik" ] && [ "$(id -u)" == "0" ]
+then
+	chown -R traefik:traefik "${CONFIGDIR_DYNAMIC}" "${CONFIGDIR_STATIC}" "${CONFIGFILE}"
+	setcap 'cap_net_bind_service=+ep' /usr/bin/traefik
+	exec su-exec traefik "$@"
+else
+	exec "$@"
+fi
 
