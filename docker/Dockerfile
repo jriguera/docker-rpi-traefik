@@ -1,19 +1,19 @@
 # Traefik Docker
 
 # docker build . -t traefik
-# docker run --name router -v $(pwd)/datadir:/etc/traefik  traefik
+# docker run -ti -p 8080:80 -p 8081:8080 -v $(pwd)/config:/config -e DOMAIN=localhost -e DOMAIN_ROUTE_DOCKERS=true -v /var/run/docker.sock:/var/run/docker.sock  traefik
 
 ARG ARCH=arm32v6
-FROM "${ARCH}/alpine:3.8"
+FROM "${ARCH}/alpine:3.10"
 
-ARG VERSION=1.7.4
-ARG MYVERSION=jose1
-ARG CONFIGDIR=/etc/traefik
+ARG VERSION=2.0.4
+ARG MYVERSION=jose0
+ARG CONFIGDIR=/config
 ARG UID=1000
 ARG GUID=1000
-ARG DEFAULTPORT=80
-ARG TLSPORT=443
-ARG APIPORT=8080
+ARG PORT_HTTP=80
+ARG PORT_HTTPS=443
+ARG PORT_API=8080
 ARG TZ=Europe/Amsterdam
 ARG ARCH
 
@@ -30,16 +30,16 @@ LABEL architecture="${ARCH}"
 
 ENV LANG=en_US.utf8
 ENV LC_ALL=C.UTF-8
-ENV TRAEFIK_CONFIG="${CONFIGDIR}"
-ENV TRAEFIK_PORT_DEFAULT="${DEFAULTPORT}"
-ENV TRAEFIK_PORT_TLS="${TLSPORT}"
-ENV TRAEFIK_PORT_API="${APIPORT}"
+ENV CONFIGDIR="${CONFIGDIR}"
+ENV PORT_HTTP="${PORT_HTTP}"
+ENV PORT_HTTPS="${PORT_HTTPS}"
+ENV PORT_API="${PORT_API}"
 
 RUN set -xe                                                                 && \
     apk -U upgrade                                                          && \
     # User/group
-    addgroup -g "${GUID}" -S traefik                                           && \
-    adduser -h "${DATADIR}" -D -G traefik -s /sbin/nologin -u "${UID}" traefik && \
+    addgroup -g "${GUID}" -S traefik                                        && \
+    adduser -h "${CONFIGDIR}" -D -G traefik -s /bin/bash -u"${UID}" traefik && \
     # Installing Alpine packages
     apk add --no-cache \
         ca-certificates \
@@ -47,7 +47,9 @@ RUN set -xe                                                                 && \
         su-exec \
         tzdata \
         socat \
+        apache2-utils \
         net-tools \
+        libcap \
         curl \
         bash \
                                                                             && \
@@ -58,8 +60,6 @@ RUN set -xe                                                                 && \
     rm -rf /tmp/* /var/tmp/* /var/cache/apk/* /var/cache/distfiles/*
 
 COPY *.sh /usr/local/bin/
-COPY etc /etc/traefik
-
 RUN set -xe                                                                 && \
     chmod a+x /usr/local/bin/*                                              && \
     ln -s /usr/local/bin/traefik.sh /usr/local/bin/docker-entrypoint.sh     && \
@@ -67,18 +67,24 @@ RUN set -xe                                                                 && \
     ln -s /usr/local/bin/traefik.sh /run.sh                                 && \
     mkdir -p /docker-entrypoint-initdb.d                                    && \
     mkdir -p "${CONFIGDIR}"                                                 && \
-    chown -R traefik:traefik /etc/traefik
+    mkdir -p /etc/traefik                                                   && \
+    chown -R traefik:traefik "${CONFIGDIR}" /etc/traefik
 
 RUN set -ex                                                                 && \
-    [ "${ARCH}" == "arm32v6" ] && wget --quiet -O /usr/bin/traefik "https://github.com/containous/traefik/releases/download/v$VERSION/traefik_linux-arm";                                                            \
-    [ "${ARCH}" == "amd64" ] && wget --quiet -O /usr/bin/traefik "https://github.com/containous/traefik/releases/download/v$VERSION/traefik_linux-amd64";                                                          \
-    chmod +x /usr/bin/traefik
+    [ "${ARCH}" == "arm32v6" ] && wget --quiet -O /tmp/traefik.tgz "https://github.com/containous/traefik/releases/download/v$VERSION/traefik_v${VERSION}_linux_armv6.tar.gz"; \
+    [ "${ARCH}" == "amd64" ] && wget --quiet -O /tmp/traefik.tgz "https://github.com/containous/traefik/releases/download/v$VERSION/traefik_v${VERSION}_linux_amd64.tar.gz"; \
+    tar -C /usr/bin -xvf /tmp/traefik.tgz traefik                           && \
+    chmod +x /usr/bin/traefik                                               && \
+    setcap 'cap_net_bind_service=+ep' /usr/bin/traefik                      && \
+    rm -f /tmp/traefik.tgz
 
-
-VOLUME ["${CONFIGDIR}"]
-EXPOSE "${DEFAULTPORT}" "${TLSPORT}" "${APIPORT}"
+WORKDIR "${CONFIGDIR}"
+VOLUME "${CONFIGDIR}"
+EXPOSE "${PORT_HTTP}" "${PORT_HTTPS}" "${PORT_API}"
+HEALTHCHECK --interval=1m --timeout=3s CMD curl -f http://127.0.0.1:8181/ping || exit 1
 
 ENTRYPOINT ["/run.sh"]
+
 # Define default command
 CMD ["traefik"]
 
