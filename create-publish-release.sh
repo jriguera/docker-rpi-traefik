@@ -131,7 +131,7 @@ pushd docker
     $DOCKER tag $NAME $DOCKER_TAG
 
     # Uploading docker image
-    echo "* Pusing Docker image to Docker Hub ..."
+    echo "* Pushing Docker image to Docker Hub ..."
     $DOCKER push $DOCKER_TAG
     $DOCKER tag $NAME $DOCKER_TAG:$VERSION
     $DOCKER push $DOCKER_TAG
@@ -170,7 +170,7 @@ $CHANGELOG
     PORT_HTTP="${PORT_HTTP:-80}"
     PORT_HTTPS="${PORT_HTTPS:-443}"
 
-Given the docker image with name `traefik`:
+Given the docker image with name 'traefik':
 
     docker run -ti -p 8080:80 -p 8081:8080 -v $(pwd)/config:/config -e DOMAIN=localhost -e DOMAIN_ROUTE_DOCKERS=true -v /var/run/docker.sock:/var/run/docker.sock  jriguera/traefik
 
