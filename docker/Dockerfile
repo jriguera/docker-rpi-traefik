@@ -4,10 +4,10 @@
 # docker run -ti -p 8080:80 -p 8081:8080 -v $(pwd)/config:/config -e DOMAIN=localhost -e DOMAIN_ROUTE_DOCKERS=true -v /var/run/docker.sock:/var/run/docker.sock  traefik
 
 ARG ARCH=arm32v6
-FROM "${ARCH}/alpine:3.10"
+FROM "${ARCH}/alpine:3.11"
 
 ARG VERSION=2.1.1
-ARG MYVERSION=jose0
+ARG MYVERSION=jose1
 ARG CONFIGDIR=/config
 
 ARG UID=1000
